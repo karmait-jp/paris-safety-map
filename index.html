@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>パリ治安マップ（2026年10月20日版）— デモ・暴動 回避エリア</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; }
+  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  .panel {
+    position: absolute; top: 10px; left: 10px; z-index: 1000;
+    background: rgba(255,255,255,0.95); border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    padding: 12px 14px; max-width: 340px; font-size: 12.5px; line-height: 1.55;
+  }
+  .panel h1 { font-size: 15px; margin: 0 0 4px; }
+  .panel .date { color: #666; font-size: 11px; margin-bottom: 6px; }
+  .panel ul { margin: 4px 0; padding-left: 18px; }
+  .panel li { margin-bottom: 3px; }
+  .legend { margin-top: 8px; border-top: 1px solid #ddd; padding-top: 6px; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .dot.red { background: rgba(211,47,47,0.6); border: 2px solid #d32f2f; }
+  .dot.orange { background: rgba(245,124,0,0.5); border: 2px solid #f57c00; }
+  .dot.purple { background: none; border: 2px dashed #7b1fa2; }
+  .zone-label { background: none; border: none; box-shadow: none; font-weight: 700; font-size: 11px; color: #333; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
+  .leaflet-popup-content { font-size: 12.5px; line-height: 1.5; }
+  .leaflet-popup-content b.rd { color: #c62828; }
+  .leaflet-popup-content b.og { color: #e65100; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .src { font-size: 10px; color: #888; margin-top: 6px; }
+  .src a { color: #888; }
+  @media (max-width: 480px) { .panel { max-width: 75vw; font-size: 11.5px; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="panel">
+  <h1>⚠️ パリ治安マップ — デモ・暴動 回避エリア</h1>
+  <div class="date">2026年10月20日時点（学生デモ＋ジレ・ジョーヌ合流で全国的騒乱中）</div>
+  <details open>
+    <summary>今の状況と行動ルール</summary>
+    <ul>
+      <li><b>10/17〜18に大規模暴動</b>。パリ圏で855人逮捕、略奪・放火が発生</li>
+      <li><b>夜間外出禁止令</b>：レピュブリック広場周辺 22時〜6時／レ・アル周辺 20時以降集会禁止（10/19〜）</li>
+      <li><b>土曜午後</b>はジレ・ジョーヌ定番日。中心部の大広場（レピュブリック・バスティーユ・シャンゼリゼ）に近づかない</li>
+      <li><b>11/5から無期限スト・封鎖</b>の呼びかけあり。交通麻痺の可能性</li>
+      <li>デモ隊や機動隊を見たら<b>その場を離れる</b>。撮影しない</li>
+      <li>メトロ駅閉鎖が頻発（Étoile・Opéra・Concorde・Madeleine・Bastille等）。移動前にRATPアプリ確認</li>
+    </ul>
+  </details>
+  <div class="legend">
+    <div><span class="dot red"></span><b>赤：デモ・暴動ホットスポット</b>（デモ開催日・夜間は回避）</div>
+    <div><span class="dot orange"></span><b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）</div>
+    <div><span class="dot purple"></span><b>紫破線：夜間外出禁止・集会禁止ゾーン</b></div>
+  </div>
+  <div class="src">出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP（2026-10-20確認）</div>
+</div>
+<script>
+const map = L.map('map').setView([48.868, 2.345], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+}).addTo(map);
+
+const RED = { color: '#d32f2f', weight: 2, fillColor: '#d32f2f', fillOpacity: 0.22 };
+const ORG = { color: '#f57c00', weight: 2, fillColor: '#f57c00', fillOpacity: 0.18 };
+const CURFEW = { color: '#7b1fa2', weight: 2.5, dashArray: '6 6', fill: false };
+
+const redZones = [
+  { n: 'レピュブリック広場', ll: [48.8676, 2.3631], r: 600,
+    p: '<b class="rd">最重要回避。</b>デモの集結・出発地点の定番で10/17も衝突多発。<b>10/19から周辺に夜間外出禁止令（22時〜6時）</b>。昼間のデモ非開催時も集会が突発しやすい。' },
+  { n: 'レ・アル／シャトレ', ll: [48.8619, 2.3469], r: 500,
+    p: '<b class="rd">夜間回避。</b>10/17-18に略奪被害。<b>周辺の路上は20時〜6時の集会禁止令</b>（10/19〜）。日中の買い物は可だがスリ多発地帯でもある。' },
+  { n: 'バスティーユ広場', ll: [48.8532, 2.3692], r: 450,
+    p: '<b class="rd">10/17の合流集結地点</b>（14時〜）。デモ開催日は終日回避。Bastille駅は閉鎖されることあり。' },
+  { n: 'ナシオン広場', ll: [48.8483, 2.3962], r: 450,
+    p: '<b class="rd">デモ終着点の定番。</b>10/2にバリケード放火・催涙ガス使用。10/6のデモもレピュブリック→ヴォルテール大通り→ここがルート。' },
+  { n: 'シャンゼリゼ／凱旋門', ll: [48.8718, 2.3030], r: 800,
+    p: '<b class="rd">10/17に暴徒が流入</b>し商店襲撃・機動隊と衝突。ジレ・ジョーヌの象徴的ターゲットで<b>土曜は特に危険</b>。Charles de Gaulle–Étoile駅閉鎖あり。' },
+  { n: 'コンコルド〜マドレーヌ〜オペラ', ll: [48.8690, 2.3266], r: 650,
+    p: '<b class="rd">デモの目標地点になりやすい官庁・高級店街。</b>Concorde・Madeleine・Opéra駅が相次いで閉鎖。デモ開催日は近づかない。' },
+  { n: '北駅（Gare du Nord）周辺', ll: [48.8809, 2.3553], r: 450, dir: 'bottom',
+    p: '<b class="rd">10/17に覆面集団と機動隊が衝突。</b>すぐ南の10区区役所にはデモ隊が乱入。平時もスリ・置き引き・客引きが多く、駅利用時は素早く移動。' },
+  { n: 'イタリー広場', ll: [48.8322, 2.3561], r: 450,
+    p: '<b class="rd">10/13のデモ出発点</b>（→アンヴァリッドへ行進）。2019年黄ベスト暴動の激戦地でもあり、デモ開催日は回避。' },
+  { n: 'アンヴァリッド', ll: [48.8585, 2.3135], r: 450,
+    p: '<b class="rd">10/13のデモ終着点。</b>国民議会に近く、デモ開催日は機動隊が大量展開。観光はデモ非開催日に。' },
+];
+
+const orangeZones = [
+  { n: 'バルベス〜グット・ドール', ll: [48.8846, 2.3496], r: 500, dir: 'left',
+    p: '<b class="og">18区南部。</b>パリで最も「避けるべき」と言われる地区。昼は通行可だが<b>夜間の一人歩きは避ける</b>。スリ・偽署名詐欺・路上販売トラブル。' },
+  { n: 'ラ・シャペル', ll: [48.8845, 2.3600], r: 400,
+    p: '<b class="og">北駅〜東駅の北側。</b>薬物売買・攻撃的な物乞いの報告が多い。長居せず速やかに通過を。夜間は回避。' },
+  { n: 'ポルト・ド・ラ・シャペル', ll: [48.8976, 2.3593], r: 500,
+    p: '<b class="og">パリ北端。</b>薬物問題で知られるエリア。観光で行く理由がなければ近づかない。' },
+  { n: 'スターリングラード〜ジョレス', ll: [48.8838, 2.3680], r: 400, dir: 'right',
+    p: '<b class="og">メトロ高架下周辺。</b>夜間の雰囲気が悪く、スリ・薬物関連のトラブル報告あり。運河沿い散歩は日中に。' },
+  { n: 'クリシー広場', ll: [48.8834, 2.3277], r: 350,
+    p: '<b class="og">警視庁がデモ代替ルート起点として提案した場所。</b>今後のデモ出発点になる可能性あり。ピガール〜クリシーは夜間の客引きにも注意。' },
+  { n: 'サン＝ドニ（市外北部）', ll: [48.9360, 2.3574], r: 1100,
+    p: '<b class="og">93県サン＝ドニ中心部。</b>今回の学生デモ発火点の高校があり騒乱が続く。平時から治安が悪く、<b>スタッド・ド・フランスのイベント時以外は夜間に行かない</b>。大聖堂観光は日中に。' },
+];
+
+const curfewZones = [
+  { n: '夜間外出禁止 22時〜6時', ll: [48.8676, 2.3631], r: 750 },
+  { n: '集会禁止 20時〜6時', ll: [48.8619, 2.3469], r: 650 },
+];
+
+function addZones(zones, style) {
+  zones.forEach(z => {
+    L.circle(z.ll, { radius: z.r, ...style }).addTo(map)
+      .bindPopup('<b>' + z.n + '</b><br>' + z.p)
+      .bindTooltip(z.n, { permanent: true, direction: z.dir || 'top', className: 'zone-label', offset: [0, -4] });
+  });
+}
+addZones(redZones, RED);
+addZones(orangeZones, ORG);
+curfewZones.forEach(z => {
+  L.circle(z.ll, { radius: z.r, ...CURFEW }).addTo(map)
+    .bindPopup('<b>🌙 ' + z.n + '</b>（2026/10/19〜 当局発表）');
+});
+</script>
+</body>
+</html>
