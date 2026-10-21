@@ -38,14 +38,14 @@
 <div id="map"></div>
 <div class="panel">
   <h1>⚠️ パリ治安マップ — デモ・暴動 回避エリア</h1>
-  <div class="date">2026年10月20日時点（学生デモ＋ジレ・ジョーヌ合流で全国的騒乱中）</div>
+  <div class="date">ゾーン情報: 2026年10月21日更新（学生デモ＋ジレ・ジョーヌ合流で全国的騒乱中）</div>
   <details open>
     <summary>今の状況と行動ルール</summary>
     <ul>
       <li><b>10/17〜18に大規模暴動</b>。パリ圏で855人逮捕、略奪・放火が発生</li>
       <li><b>夜間外出禁止令</b>：レピュブリック広場周辺 22時〜6時／レ・アル周辺 20時以降集会禁止（10/19〜）</li>
-      <li><b>土曜午後</b>はジレ・ジョーヌ定番日。中心部の大広場（レピュブリック・バスティーユ・シャンゼリゼ）に近づかない</li>
-      <li><b>11/5から無期限スト・封鎖</b>の呼びかけあり。交通麻痺の可能性</li>
+      <li><b>次の大規模デモ: 10/24(土)「Acte II」</b>— レピュブリック＆バスティーユ集結予定。土曜午後は中心部の大広場に近づかない</li>
+      <li><b>11/5(木)は5大労組の全国スト</b>（メトロ・SNCF・学校に影響）。無期限封鎖の呼びかけも並存</li>
       <li>デモ隊や機動隊を見たら<b>その場を離れる</b>。撮影しない</li>
       <li>メトロ駅閉鎖が頻発（Étoile・Opéra・Concorde・Madeleine・Bastille等）。移動前にRATPアプリ確認</li>
     </ul>
@@ -55,7 +55,11 @@
     <div><span class="dot orange"></span><b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）</div>
     <div><span class="dot purple"></span><b>紫破線：夜間外出禁止・集会禁止ゾーン</b></div>
   </div>
-  <div class="src">出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP（2026-10-20確認）</div>
+  <div class="legend" id="newsbox" style="display:none">
+    <div style="font-weight:700">📡 最新ニュース <span id="newsupd" style="font-weight:400;color:#888;font-size:10px"></span></div>
+    <ul id="newslist" style="margin:4px 0;padding-left:16px;max-height:160px;overflow-y:auto;font-size:11.5px"></ul>
+  </div>
+  <div class="src">出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP ほか</div>
 </div>
 <script>
 const map = L.map('map').setView([48.868, 2.345], 13);
@@ -121,6 +125,34 @@ curfewZones.forEach(z => {
   L.circle(z.ll, { radius: z.r, ...CURFEW }).addTo(map)
     .bindPopup('<b>🌙 ' + z.n + '</b>（2026/10/19〜 当局発表）');
 });
+
+// 最新ニュース（paris-watchが2時間毎にnews.jsonを自動更新）
+fetch('news.json?t=' + Date.now())
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d || !d.items || !d.items.length) return;
+    const ul = document.getElementById('newslist');
+    d.items.slice(0, 8).forEach(it => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = it.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = it.ja;
+      li.appendChild(a);
+      if (it.ts) {
+        const s = document.createElement('span');
+        s.textContent = ' (' + it.ts + ')';
+        s.style.cssText = 'color:#999;font-size:10px';
+        li.appendChild(s);
+      }
+      ul.appendChild(li);
+    });
+    const t = new Date(d.updated);
+    document.getElementById('newsupd').textContent = '更新 ' +
+      t.toLocaleString('ja-JP', { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
+      ' 仏時間・2時間毎自動';
+    document.getElementById('newsbox').style.display = 'block';
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>
