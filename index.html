@@ -15,7 +15,11 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     padding: 12px 14px; max-width: 340px; font-size: 12.5px; line-height: 1.55;
   }
-  .panel h1 { font-size: 15px; margin: 0 0 4px; }
+  .panel h1 { font-size: 15px; margin: 0; cursor: pointer; user-select: none; display: flex; align-items: center; }
+  .panel h1 .chev { margin-left: auto; padding-left: 8px; font-size: 11px; color: #666; transition: transform .2s; }
+  .panel.closed .chev { transform: rotate(-90deg); }
+  .panel.closed #panelbody { display: none; }
+  #panelbody { margin-top: 4px; overflow-y: auto; max-height: calc(100vh - 120px); -webkit-overflow-scrolling: touch; }
   .panel .date { color: #666; font-size: 11px; margin-bottom: 6px; }
   .panel ul { margin: 4px 0; padding-left: 18px; }
   .panel li { margin-bottom: 3px; }
@@ -31,13 +35,17 @@
   details summary { cursor: pointer; font-weight: 600; }
   .src { font-size: 10px; color: #888; margin-top: 6px; }
   .src a { color: #888; }
-  @media (max-width: 480px) { .panel { max-width: 75vw; font-size: 11.5px; } }
+  @media (max-width: 640px) {
+    .panel { max-width: 88vw; font-size: 11.5px; }
+    #panelbody { max-height: 52vh; }
+  }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div class="panel">
-  <h1>⚠️ パリ治安マップ — デモ・暴動 回避エリア</h1>
+<div class="panel" id="panel">
+  <h1 id="paneltoggle">⚠️ パリ治安マップ — デモ・暴動 回避エリア<span class="chev">▼</span></h1>
+  <div id="panelbody">
   <div class="date">ゾーン情報: 2026年10月21日更新（学生デモ＋ジレ・ジョーヌ合流で全国的騒乱中）</div>
   <details open>
     <summary>今の状況と行動ルール</summary>
@@ -60,8 +68,17 @@
     <ul id="newslist" style="margin:4px 0;padding-left:16px;max-height:160px;overflow-y:auto;font-size:11.5px"></ul>
   </div>
   <div class="src">出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP ほか</div>
+  </div>
 </div>
 <script>
+const panel = document.getElementById('panel');
+document.getElementById('paneltoggle').addEventListener('click', () => panel.classList.toggle('closed'));
+if (window.innerWidth <= 640 && !location.search.includes('panel=open')) {
+  panel.classList.add('closed');
+  const det = panel.querySelector('details');
+  if (det) det.removeAttribute('open');
+}
+
 const map = L.map('map').setView([48.868, 2.345], 13);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
@@ -149,7 +166,7 @@ fetch('news.json?t=' + Date.now())
     const t = new Date(d.updated);
     document.getElementById('newsupd').textContent = '更新 ' +
       t.toLocaleString('ja-JP', { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
-      ' 仏時間・2時間毎自動';
+      ' 仏時間・自動更新';
     document.getElementById('newsbox').style.display = 'block';
   })
   .catch(() => {});
