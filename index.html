@@ -28,6 +28,7 @@
   .dot.red { background: rgba(211,47,47,0.6); border: 2px solid #d32f2f; }
   .dot.orange { background: rgba(245,124,0,0.5); border: 2px solid #f57c00; }
   .dot.purple { background: none; border: 2px dashed #7b1fa2; }
+  .dot.news { background: rgba(194,24,91,0.25); border: 2px dashed #c2185b; }
   .zone-label { background: none; border: none; box-shadow: none; font-weight: 700; font-size: 11px; color: #333; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
   .leaflet-popup-content { font-size: 12.5px; line-height: 1.5; }
   .leaflet-popup-content b.rd { color: #c62828; }
@@ -62,6 +63,7 @@
     <div><span class="dot red"></span><b>赤：デモ・暴動ホットスポット</b>（デモ開催日・夜間は回避）</div>
     <div><span class="dot orange"></span><b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）</div>
     <div><span class="dot purple"></span><b>紫破線：夜間外出禁止・集会禁止ゾーン</b></div>
+    <div><span class="dot news"></span><b>桃破線：ニュース自動検出ゾーン</b>（直近72hの報道が言及・自動更新）</div>
   </div>
   <div class="legend" id="newsbox" style="display:none">
     <div style="font-weight:700">📡 最新ニュース <span id="newsupd" style="font-weight:400;color:#888;font-size:10px"></span></div>
@@ -143,7 +145,24 @@ curfewZones.forEach(z => {
     .bindPopup('<b>🌙 ' + z.n + '</b>（2026/10/19〜 当局発表）');
 });
 
-// 最新ニュース（paris-watchが2時間毎にnews.jsonを自動更新）
+// ニュース自動検出ゾーン（paris-watchが報道中の地名からhotspots.jsonを自動生成・72hで失効）
+const NEWSZ = { color: '#c2185b', weight: 2, dashArray: '4 4', fillColor: '#c2185b', fillOpacity: 0.10 };
+fetch('hotspots.json?t=' + Date.now())
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d || !d.spots) return;
+    const now = Date.now();
+    d.spots.forEach(s => {
+      if (now - new Date(s.last).getTime() > 72 * 3600 * 1000) return;
+      const t = new Date(s.last).toLocaleString('ja-JP', { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const a = s.url ? '<br><a href="' + s.url + '" target="_blank" rel="noopener">' + (s.head || '関連記事') + '</a>' : '';
+      L.circle(s.ll, { radius: s.r, ...NEWSZ }).addTo(map)
+        .bindPopup('<b>🗞 ' + s.label + '</b><br>直近72hの騒乱ニュースで言及（' + s.n + '回・最終 ' + t + ' 仏時間）' + a);
+    });
+  })
+  .catch(() => {});
+
+// 最新ニュース（paris-watchがnews.jsonを自動更新）
 fetch('news.json?t=' + Date.now())
   .then(r => r.ok ? r.json() : null)
   .then(d => {
