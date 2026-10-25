@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>パリ治安マップ（2026年10月20日版）— デモ・暴動 回避エリア</title>
+<title>パリ治安マップ — デモ・暴動 回避エリア</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -36,6 +36,9 @@
   details summary { cursor: pointer; font-weight: 600; }
   .src { font-size: 10px; color: #888; margin-top: 6px; }
   .src a { color: #888; }
+  .langs { font-size: 11px; margin-top: 6px; color: #888; }
+  .langs a { color: #1565c0; text-decoration: none; margin-right: 6px; }
+  .langs a.cur { color: #333; font-weight: 700; text-decoration: underline; }
   @media (max-width: 640px) {
     .panel { max-width: 88vw; font-size: 11.5px; }
     #panelbody { max-height: 52vh; }
@@ -45,42 +48,134 @@
 <body>
 <div id="map"></div>
 <div class="panel" id="panel">
-  <h1 id="paneltoggle">⚠️ パリ治安マップ — デモ・暴動 回避エリア<span class="chev">▼</span></h1>
+  <h1 id="paneltoggle"><span id="t_title">⚠️ パリ治安マップ — デモ・暴動 回避エリア</span><span class="chev">▼</span></h1>
   <div id="panelbody">
-  <div class="date">基本ゾーン: 10/21更新 ／ 🗞ニュース検出ゾーン・ニュース欄: 自動更新（全国的騒乱継続中）</div>
-  <details open>
-    <summary>今の状況と行動ルール</summary>
-    <ul>
-      <li><b>10/17〜18に大規模暴動</b>。パリ圏で855人逮捕、略奪・放火が発生</li>
-      <li><b>夜間外出禁止令</b>：レピュブリック広場周辺 22時〜6時／レ・アル周辺 20時以降集会禁止（10/19〜）</li>
-      <li><b>次の大規模デモ: 10/24(土)「Acte II」</b>— レピュブリック＆バスティーユ集結予定。土曜午後は中心部の大広場に近づかない</li>
-      <li><b>11/5(木)は5大労組の全国スト</b>（メトロ・SNCF・学校に影響）。無期限封鎖の呼びかけも並存</li>
-      <li>デモ隊や機動隊を見たら<b>その場を離れる</b>。撮影しない</li>
-      <li>メトロ駅閉鎖が頻発（Étoile・Opéra・Concorde・Madeleine・Bastille等）。移動前にRATPアプリ確認</li>
-    </ul>
+  <div class="date" id="t_date"></div>
+  <details>
+    <summary id="t_summary"></summary>
+    <ul id="t_rules"></ul>
   </details>
-  <div class="legend">
-    <div><span class="dot red"></span><b>赤：デモ・暴動ホットスポット</b>（デモ開催日・夜間は回避）</div>
-    <div><span class="dot orange"></span><b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）</div>
-    <div><span class="dot purple"></span><b>紫破線：夜間外出禁止・集会禁止ゾーン</b></div>
-    <div><span class="dot news"></span><b>桃破線：ニュース自動検出ゾーン</b>（直近72hの報道が言及・自動更新）</div>
-  </div>
+  <div class="legend" id="t_legend"></div>
   <div class="legend" id="newsbox" style="display:none">
-    <div style="font-weight:700">📡 最新ニュース <span id="newsupd" style="font-weight:400;color:#888;font-size:10px"></span></div>
+    <div style="font-weight:700">📡 <span id="t_newshead"></span> <span id="newsupd" style="font-weight:400;color:#888;font-size:10px"></span></div>
     <ul id="newslist" style="margin:4px 0;padding-left:16px;max-height:160px;overflow-y:auto;font-size:11.5px"></ul>
   </div>
-  <div class="src">出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP ほか</div>
+  <div class="src" id="t_src"></div>
+  <div class="langs" id="langsw"></div>
   </div>
 </div>
 <script>
+// ---------- language ----------
+const LANG = (() => {
+  const p = new URLSearchParams(location.search).get('lang');
+  if (p && ['ja','en','fr'].includes(p)) return p;
+  const l = (navigator.language || 'en').toLowerCase();
+  if (l.startsWith('ja')) return 'ja';
+  if (l.startsWith('fr')) return 'fr';
+  return 'en';
+})();
+document.documentElement.lang = LANG;
+
+const T = {
+ja: {
+  title: '⚠️ パリ治安マップ — デモ・暴動 回避エリア',
+  date: '基本ゾーン: 10/25更新 ／ 🗞ニュース検出ゾーン・ニュース欄: 自動更新（全国的騒乱継続中）',
+  summary: '今の状況と行動ルール',
+  rules: [
+    '<b>10/17〜18に大規模暴動</b>（パリ圏855人逮捕）。10/24「Acte II」は逮捕142人と縮小傾向',
+    '<b>夜間外出禁止令</b>：レピュブリック広場周辺 22時〜6時／レ・アル周辺 20時以降集会禁止（10/19〜）',
+    '<b>次の週末デモ: 10/31(土)の呼びかけあり</b>。土曜午後は中心部の大広場（レピュブリック・バスティーユ・シャンゼリゼ）に近づかない',
+    '<b>11/5(木)は5大労組の全国スト</b>（メトロ・SNCF・学校に影響）。無期限封鎖の呼びかけも並存',
+    'デモ隊や機動隊を見たら<b>その場を離れる</b>。撮影しない',
+    'メトロ駅閉鎖が頻発（Étoile・Opéra・Concorde・Madeleine・Bastille等）。移動前にRATPアプリ確認',
+  ],
+  legend: [
+    ['red', '<b>赤：デモ・暴動ホットスポット</b>（デモ開催日・夜間は回避）'],
+    ['orange', '<b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）'],
+    ['purple', '<b>紫破線：夜間外出禁止・集会禁止ゾーン</b>'],
+    ['news', '<b>桃破線：ニュース自動検出ゾーン</b>（直近72hの報道が言及・自動更新）'],
+  ],
+  newshead: '最新ニュース',
+  newsupd: (t) => '更新 ' + t + ' 仏時間・自動更新',
+  hotspot: (n, t) => '直近72hの騒乱ニュースで言及（' + n + '回・最終 ' + t + ' 仏時間）',
+  curfew1: '🌙 夜間外出禁止 22時〜6時（2026/10/19〜 当局発表）',
+  curfew2: '🌙 集会禁止 20時〜6時（2026/10/19〜 当局発表）',
+  src: '出典: France24 / CNN / Wikipedia / Sortiraparis / 外務省海外安全HP ほか',
+},
+en: {
+  title: '⚠️ Paris Safety Map — Protest & Riot Avoidance Zones',
+  date: 'Base zones updated Oct 25 / 🗞 news zones & feed auto-updated (nationwide unrest ongoing)',
+  summary: 'Current situation & rules',
+  rules: [
+    '<b>Major riots Oct 17–18</b> (855 arrests in the Paris region). The Oct 24 “Acte II” de-escalated: 142 arrests',
+    '<b>Night curfew</b> around Place de la République 10pm–6am; gatherings banned near Les Halles after 8pm (since Oct 19)',
+    '<b>Next weekend protest called for Sat Oct 31.</b> On Saturday afternoons stay away from the big central squares (République, Bastille, Champs-Élysées)',
+    '<b>Nationwide one-day strike Thu Nov 5</b> (metro, SNCF, schools). Calls for open-ended blockades also circulating',
+    'If you see protesters or riot police, <b>leave the area</b>. Don’t film',
+    'Frequent metro closures (Étoile, Opéra, Concorde, Madeleine, Bastille…). Check the RATP app before moving',
+  ],
+  legend: [
+    ['red', '<b>Red: protest/riot hotspots</b> (avoid on protest days & at night)'],
+    ['orange', '<b>Orange: caution at all times</b> (pickpockets, drugs — esp. after dark)'],
+    ['purple', '<b>Purple dashed: curfew / gathering-ban zones</b>'],
+    ['news', '<b>Pink dashed: auto-detected news zones</b> (mentioned in the last 72h, auto-updated)'],
+  ],
+  newshead: 'Latest news',
+  newsupd: (t) => 'Updated ' + t + ' Paris time · auto',
+  hotspot: (n, t) => 'Mentioned in unrest news in the last 72h (' + n + '×, last ' + t + ' Paris time)',
+  curfew1: '🌙 Night curfew 10pm–6am (ordered by authorities, since Oct 19, 2026)',
+  curfew2: '🌙 Gatherings banned 8pm–6am (ordered by authorities, since Oct 19, 2026)',
+  src: 'Sources: France24 / CNN / Wikipedia / Sortiraparis / Japan MOFA travel safety, etc.',
+},
+fr: {
+  title: '⚠️ Carte sécurité Paris — zones à éviter (manifs/émeutes)',
+  date: 'Zones de base : màj 25 oct. / 🗞 zones détectées & actus : mise à jour auto (troubles en cours)',
+  summary: 'Situation actuelle et consignes',
+  rules: [
+    '<b>Émeutes majeures les 17–18 oct.</b> (855 interpellations en région parisienne). « Acte II » du 24 oct. en baisse : 142 interpellations',
+    '<b>Couvre-feu</b> autour de la place de la République 22h–6h ; rassemblements interdits vers Les Halles après 20h (depuis le 19 oct.)',
+    '<b>Nouvel appel à manifester le sam. 31 oct.</b> Le samedi après-midi, éviter les grandes places du centre (République, Bastille, Champs-Élysées)',
+    '<b>Grève nationale le jeu. 5 nov.</b> (métro, SNCF, écoles). Des appels au blocage reconductible circulent aussi',
+    'À la vue de manifestants ou de CRS, <b>quittez les lieux</b>. Ne filmez pas',
+    'Fermetures fréquentes de stations (Étoile, Opéra, Concorde, Madeleine, Bastille…). Vérifiez l’appli RATP avant de bouger',
+  ],
+  legend: [
+    ['red', '<b>Rouge : points chauds manifs/émeutes</b> (à éviter les jours de manif et la nuit)'],
+    ['orange', '<b>Orange : vigilance permanente</b> (pickpockets, deal — surtout la nuit)'],
+    ['purple', '<b>Pointillés violets : couvre-feu / rassemblements interdits</b>'],
+    ['news', '<b>Pointillés roses : zones détectées par l’actu</b> (citées ces 72 dernières h, auto)'],
+  ],
+  newshead: 'Dernières actus',
+  newsupd: (t) => 'Màj ' + t + ' heure de Paris · auto',
+  hotspot: (n, t) => 'Cité dans l’actualité des troubles ces 72 dernières heures (' + n + '×, dernier ' + t + ')',
+  curfew1: '🌙 Couvre-feu 22h–6h (arrêté des autorités, depuis le 19 oct. 2026)',
+  curfew2: '🌙 Rassemblements interdits 20h–6h (arrêté des autorités, depuis le 19 oct. 2026)',
+  src: 'Sources : France24 / CNN / Wikipédia / Sortiraparis / MAE japonais, etc.',
+},
+};
+const S = T[LANG];
+
+// ---------- panel ----------
+document.title = S.title.replace('⚠️ ', '');
+document.getElementById('t_title').textContent = S.title;
+document.getElementById('t_date').textContent = S.date;
+document.getElementById('t_summary').textContent = S.summary;
+document.getElementById('t_rules').innerHTML = S.rules.map(r => '<li>' + r + '</li>').join('');
+document.getElementById('t_legend').innerHTML = S.legend.map(l => '<div><span class="dot ' + l[0] + '"></span>' + l[1] + '</div>').join('');
+document.getElementById('t_newshead').textContent = S.newshead;
+document.getElementById('t_src').textContent = S.src;
+document.getElementById('langsw').innerHTML = ['ja', 'en', 'fr'].map(l =>
+  '<a href="?lang=' + l + '" class="' + (l === LANG ? 'cur' : '') + '">' + { ja: '日本語', en: 'English', fr: 'Français' }[l] + '</a>').join('');
+
 const panel = document.getElementById('panel');
 document.getElementById('paneltoggle').addEventListener('click', () => panel.classList.toggle('closed'));
 if (window.innerWidth <= 640 && !location.search.includes('panel=open')) {
   panel.classList.add('closed');
-  const det = panel.querySelector('details');
-  if (det) det.removeAttribute('open');
+} else {
+  document.querySelector('.panel details').setAttribute('open', '');
 }
 
+// ---------- map ----------
 const map = L.map('map').setView([48.868, 2.345], 13);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
@@ -89,64 +184,112 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const RED = { color: '#d32f2f', weight: 2, fillColor: '#d32f2f', fillOpacity: 0.22 };
 const ORG = { color: '#f57c00', weight: 2, fillColor: '#f57c00', fillOpacity: 0.18 };
 const CURFEW = { color: '#7b1fa2', weight: 2.5, dashArray: '6 6', fill: false };
+const NEWSZ = { color: '#c2185b', weight: 2, dashArray: '4 4', fillColor: '#c2185b', fillOpacity: 0.10 };
 
+// n/p: {ja,en,fr}。en/frの地名は現地表記で共通
 const redZones = [
-  { n: 'レピュブリック広場', ll: [48.8676, 2.3631], r: 600,
-    p: '<b class="rd">最重要回避。</b>デモの集結・出発地点の定番で10/17も衝突多発。<b>10/19から周辺に夜間外出禁止令（22時〜6時）</b>。昼間のデモ非開催時も集会が突発しやすい。' },
-  { n: 'レ・アル／シャトレ', ll: [48.8619, 2.3469], r: 500,
-    p: '<b class="rd">夜間回避。</b>10/17-18に略奪被害。<b>周辺の路上は20時〜6時の集会禁止令</b>（10/19〜）。日中の買い物は可だがスリ多発地帯でもある。' },
-  { n: 'バスティーユ広場', ll: [48.8532, 2.3692], r: 450,
-    p: '<b class="rd">10/17の合流集結地点</b>（14時〜）。デモ開催日は終日回避。Bastille駅は閉鎖されることあり。' },
-  { n: 'ナシオン広場', ll: [48.8483, 2.3962], r: 450,
-    p: '<b class="rd">デモ終着点の定番。</b>10/2にバリケード放火・催涙ガス使用。10/6のデモもレピュブリック→ヴォルテール大通り→ここがルート。' },
-  { n: 'シャンゼリゼ／凱旋門', ll: [48.8718, 2.3030], r: 800,
-    p: '<b class="rd">10/17に暴徒が流入</b>し商店襲撃・機動隊と衝突。ジレ・ジョーヌの象徴的ターゲットで<b>土曜は特に危険</b>。Charles de Gaulle–Étoile駅閉鎖あり。' },
-  { n: 'コンコルド〜マドレーヌ〜オペラ', ll: [48.8690, 2.3266], r: 650,
-    p: '<b class="rd">デモの目標地点になりやすい官庁・高級店街。</b>Concorde・Madeleine・Opéra駅が相次いで閉鎖。デモ開催日は近づかない。' },
-  { n: '北駅（Gare du Nord）周辺', ll: [48.8809, 2.3553], r: 450, dir: 'bottom',
-    p: '<b class="rd">10/17に覆面集団と機動隊が衝突。</b>すぐ南の10区区役所にはデモ隊が乱入。平時もスリ・置き引き・客引きが多く、駅利用時は素早く移動。' },
-  { n: 'イタリー広場', ll: [48.8322, 2.3561], r: 450,
-    p: '<b class="rd">10/13のデモ出発点</b>（→アンヴァリッドへ行進）。2019年黄ベスト暴動の激戦地でもあり、デモ開催日は回避。' },
-  { n: 'アンヴァリッド', ll: [48.8585, 2.3135], r: 450,
-    p: '<b class="rd">10/13のデモ終着点。</b>国民議会に近く、デモ開催日は機動隊が大量展開。観光はデモ非開催日に。' },
+  { ll: [48.8676, 2.3631], r: 600,
+    n: { ja: 'レピュブリック広場', en: 'République', fr: 'République' },
+    p: { ja: '<b class="rd">最重要回避。</b>デモの集結・出発地点の定番で10/17も衝突多発。<b>10/19から周辺に夜間外出禁止令（22時〜6時）</b>。昼間のデモ非開催時も集会が突発しやすい。',
+         en: '<b class="rd">Avoid at all costs.</b> The classic rally and departure point for protests; repeated clashes incl. Oct 17. <b>Night curfew 10pm–6am in the area since Oct 19.</b> Spontaneous gatherings even on non-protest days.',
+         fr: '<b class="rd">À éviter absolument.</b> Point de ralliement classique des cortèges ; heurts répétés dont le 17 oct. <b>Couvre-feu 22h–6h aux abords depuis le 19 oct.</b> Rassemblements spontanés possibles hors jours de manif.' } },
+  { ll: [48.8619, 2.3469], r: 500,
+    n: { ja: 'レ・アル／シャトレ', en: 'Les Halles / Châtelet', fr: 'Les Halles / Châtelet' },
+    p: { ja: '<b class="rd">夜間回避。</b>10/17-18に略奪被害。<b>周辺の路上は20時〜6時の集会禁止令</b>（10/19〜）。日中の買い物は可だがスリ多発地帯でもある。',
+         en: '<b class="rd">Avoid at night.</b> Looting on Oct 17–18. <b>Gatherings banned on nearby streets 8pm–6am</b> (since Oct 19). Daytime shopping is fine but it’s a pickpocket hotspot.',
+         fr: '<b class="rd">À éviter la nuit.</b> Pillages les 17–18 oct. <b>Rassemblements interdits 20h–6h dans les rues voisines</b> (depuis le 19 oct.). Shopping possible en journée, mais pickpockets nombreux.' } },
+  { ll: [48.8532, 2.3692], r: 450,
+    n: { ja: 'バスティーユ広場', en: 'Bastille', fr: 'Bastille' },
+    p: { ja: '<b class="rd">10/17・10/24の集結地点。</b>デモ開催日は終日回避。Bastille駅は閉鎖されることあり。',
+         en: '<b class="rd">Rally point on Oct 17 and Oct 24.</b> Avoid all day on protest days; Bastille station is sometimes closed.',
+         fr: '<b class="rd">Point de rassemblement les 17 et 24 oct.</b> À éviter toute la journée les jours de manif ; station Bastille parfois fermée.' } },
+  { ll: [48.8483, 2.3962], r: 450,
+    n: { ja: 'ナシオン広場', en: 'Nation', fr: 'Nation' },
+    p: { ja: '<b class="rd">デモ終着点の定番。</b>10/2にバリケード放火・催涙ガス使用。10/6のデモもレピュブリック→ヴォルテール大通り→ここがルート。',
+         en: '<b class="rd">Classic end point of marches.</b> Barricade fires and tear gas on Oct 2; the Oct 6 route (République → Bd Voltaire) also ended here.',
+         fr: '<b class="rd">Arrivée classique des cortèges.</b> Barricades incendiées et lacrymogènes le 2 oct. ; le parcours du 6 oct. (République → Bd Voltaire) finissait ici.' } },
+  { ll: [48.8718, 2.3030], r: 800,
+    n: { ja: 'シャンゼリゼ／凱旋門', en: 'Champs-Élysées', fr: 'Champs-Élysées' },
+    p: { ja: '<b class="rd">10/17に暴徒が流入</b>し商店襲撃・機動隊と衝突。ジレ・ジョーヌの象徴的ターゲットで<b>土曜は特に危険</b>。Charles de Gaulle–Étoile駅閉鎖あり。',
+         en: '<b class="rd">Stormed by rioters on Oct 17</b> — shops attacked, clashes with riot police. A symbolic yellow-vest target; <b>Saturdays are the riskiest</b>. Charles de Gaulle–Étoile station closures.',
+         fr: '<b class="rd">Envahis par des casseurs le 17 oct.</b> : commerces attaqués, heurts avec les CRS. Cible symbolique des gilets jaunes ; <b>samedis particulièrement risqués</b>. Fermetures de Charles de Gaulle–Étoile.' } },
+  { ll: [48.8690, 2.3266], r: 650,
+    n: { ja: 'コンコルド〜マドレーヌ〜オペラ', en: 'Concorde – Opéra', fr: 'Concorde – Opéra' },
+    p: { ja: '<b class="rd">デモの目標地点になりやすい官庁・高級店街。</b>Concorde・Madeleine・Opéra駅が相次いで閉鎖。デモ開催日は近づかない。',
+         en: '<b class="rd">Government and luxury-shopping district, a frequent protest target.</b> Concorde, Madeleine and Opéra stations closed repeatedly. Stay away on protest days.',
+         fr: '<b class="rd">Quartier des ministères et du luxe, cible fréquente des cortèges.</b> Stations Concorde, Madeleine et Opéra fermées à répétition. À éviter les jours de manif.' } },
+  { ll: [48.8809, 2.3553], r: 450, dir: 'bottom',
+    n: { ja: '北駅（Gare du Nord）周辺', en: 'Gare du Nord', fr: 'Gare du Nord' },
+    p: { ja: '<b class="rd">10/17に覆面集団と機動隊が衝突。</b>すぐ南の10区区役所にはデモ隊が乱入。平時もスリ・置き引き・客引きが多く、駅利用時は素早く移動。',
+         en: '<b class="rd">Masked groups clashed with riot police here on Oct 17</b>; protesters stormed the nearby 10th-arr. town hall. Pickpockets and hustlers at all times — move through quickly.',
+         fr: '<b class="rd">Affrontements entre groupes masqués et CRS le 17 oct.</b> ; intrusion à la mairie du 10e voisine. Pickpockets et arnaques en permanence : ne vous attardez pas.' } },
+  { ll: [48.8322, 2.3561], r: 450,
+    n: { ja: 'イタリー広場', en: "Place d'Italie", fr: "Place d'Italie" },
+    p: { ja: '<b class="rd">10/13のデモ出発点</b>（→アンヴァリッドへ行進）。2019年黄ベスト暴動の激戦地でもあり、デモ開催日は回避。',
+         en: '<b class="rd">Start of the Oct 13 march</b> (to Invalides). A major battleground of the 2019 yellow-vest riots — avoid on protest days.',
+         fr: '<b class="rd">Départ du cortège du 13 oct.</b> (vers les Invalides). Haut lieu des émeutes gilets jaunes de 2019 — à éviter les jours de manif.' } },
+  { ll: [48.8585, 2.3135], r: 450,
+    n: { ja: 'アンヴァリッド', en: 'Invalides', fr: 'Invalides' },
+    p: { ja: '<b class="rd">10/13のデモ終着点。</b>国民議会に近く、デモ開催日は機動隊が大量展開。観光はデモ非開催日に。',
+         en: '<b class="rd">End point of the Oct 13 march.</b> Near the National Assembly; heavy riot-police presence on protest days. Visit on quiet days.',
+         fr: '<b class="rd">Arrivée du cortège du 13 oct.</b> Proche de l’Assemblée nationale ; fort dispositif policier les jours de manif. À visiter hors manifs.' } },
 ];
 
 const orangeZones = [
-  { n: 'バルベス〜グット・ドール', ll: [48.8846, 2.3496], r: 500, dir: 'left',
-    p: '<b class="og">18区南部。</b>パリで最も「避けるべき」と言われる地区。昼は通行可だが<b>夜間の一人歩きは避ける</b>。スリ・偽署名詐欺・路上販売トラブル。' },
-  { n: 'ラ・シャペル', ll: [48.8845, 2.3600], r: 400,
-    p: '<b class="og">北駅〜東駅の北側。</b>薬物売買・攻撃的な物乞いの報告が多い。長居せず速やかに通過を。夜間は回避。' },
-  { n: 'ポルト・ド・ラ・シャペル', ll: [48.8976, 2.3593], r: 500,
-    p: '<b class="og">パリ北端。</b>薬物問題で知られるエリア。観光で行く理由がなければ近づかない。' },
-  { n: 'スターリングラード〜ジョレス', ll: [48.8838, 2.3680], r: 400, dir: 'right',
-    p: '<b class="og">メトロ高架下周辺。</b>夜間の雰囲気が悪く、スリ・薬物関連のトラブル報告あり。運河沿い散歩は日中に。' },
-  { n: 'クリシー広場', ll: [48.8834, 2.3277], r: 350,
-    p: '<b class="og">警視庁がデモ代替ルート起点として提案した場所。</b>今後のデモ出発点になる可能性あり。ピガール〜クリシーは夜間の客引きにも注意。' },
-  { n: 'サン＝ドニ（市外北部）', ll: [48.9360, 2.3574], r: 1100,
-    p: '<b class="og">93県サン＝ドニ中心部。</b>今回の学生デモ発火点の高校があり騒乱が続く。平時から治安が悪く、<b>スタッド・ド・フランスのイベント時以外は夜間に行かない</b>。大聖堂観光は日中に。' },
+  { ll: [48.8846, 2.3496], r: 500, dir: 'left',
+    n: { ja: 'バルベス〜グット・ドール', en: 'Barbès – Goutte d’Or', fr: 'Barbès – Goutte d’Or' },
+    p: { ja: '<b class="og">18区南部。</b>パリで最も「避けるべき」と言われる地区。昼は通行可だが<b>夜間の一人歩きは避ける</b>。スリ・偽署名詐欺・路上販売トラブル。',
+         en: '<b class="og">Lower 18th.</b> The area most often named “to avoid”. Passing through by day is fine; <b>don’t walk alone after dark</b>. Pickpockets, petition scams, street-vending trouble.',
+         fr: '<b class="og">Bas du 18e.</b> Quartier le plus souvent cité « à éviter ». Passage possible en journée ; <b>évitez de marcher seul la nuit</b>. Pickpockets, fausses pétitions, vente à la sauvette.' } },
+  { ll: [48.8845, 2.3600], r: 400,
+    n: { ja: 'ラ・シャペル', en: 'La Chapelle', fr: 'La Chapelle' },
+    p: { ja: '<b class="og">北駅〜東駅の北側。</b>薬物売買・攻撃的な物乞いの報告が多い。長居せず速やかに通過を。夜間は回避。',
+         en: '<b class="og">North of Gare du Nord/Est.</b> Frequent reports of drug dealing and aggressive begging. Pass through quickly; avoid at night.',
+         fr: '<b class="og">Au nord des gares du Nord et de l’Est.</b> Deal et mendicité agressive souvent signalés. Passez sans vous attarder ; évitez la nuit.' } },
+  { ll: [48.8976, 2.3593], r: 500,
+    n: { ja: 'ポルト・ド・ラ・シャペル', en: 'Porte de la Chapelle', fr: 'Porte de la Chapelle' },
+    p: { ja: '<b class="og">パリ北端。</b>薬物問題で知られるエリア。観光で行く理由がなければ近づかない。',
+         en: '<b class="og">Northern edge of Paris,</b> known for drug problems. No tourist reason to go — stay away.',
+         fr: '<b class="og">Porte nord de Paris,</b> connue pour ses problèmes de drogue. Aucun intérêt touristique : à éviter.' } },
+  { ll: [48.8838, 2.3680], r: 400, dir: 'right',
+    n: { ja: 'スターリングラード〜ジョレス', en: 'Stalingrad – Jaurès', fr: 'Stalingrad – Jaurès' },
+    p: { ja: '<b class="og">メトロ高架下周辺。</b>夜間の雰囲気が悪く、スリ・薬物関連のトラブル報告あり。運河沿い散歩は日中に。',
+         en: '<b class="og">Around the elevated metro.</b> Unpleasant at night; pickpocket and drug-related reports. Canal walks by daylight only.',
+         fr: '<b class="og">Sous le métro aérien.</b> Ambiance désagréable la nuit ; vols et deal signalés. Balades le long du canal en journée uniquement.' } },
+  { ll: [48.8834, 2.3277], r: 350,
+    n: { ja: 'クリシー広場', en: 'Place de Clichy', fr: 'Place de Clichy' },
+    p: { ja: '<b class="og">警視庁がデモ代替ルート起点として提案した場所。</b>今後のデモ出発点になる可能性あり。ピガール〜クリシーは夜間の客引きにも注意。',
+         en: '<b class="og">Proposed by police HQ as an alternative march start</b> — may host future protests. Watch for touts between Pigalle and Clichy at night.',
+         fr: '<b class="og">Proposée par la préfecture comme départ alternatif de cortèges.</b> Rabatteurs entre Pigalle et Clichy la nuit.' } },
+  { ll: [48.9360, 2.3574], r: 1100,
+    n: { ja: 'サン＝ドニ（市外北部）', en: 'Saint-Denis', fr: 'Saint-Denis' },
+    p: { ja: '<b class="og">93県サン＝ドニ中心部。</b>今回の学生デモ発火点の高校があり騒乱が続く。平時から治安が悪く、<b>スタッド・ド・フランスのイベント時以外は夜間に行かない</b>。大聖堂観光は日中に。',
+         en: '<b class="og">Central Saint-Denis (93).</b> Home to the school where the student movement began; unrest continues. Rough at all times — <b>don’t go at night except for Stade de France events</b>. Visit the basilica by day.',
+         fr: '<b class="og">Centre de Saint-Denis (93).</b> Lycée à l’origine du mouvement ; troubles persistants. <b>Évitez la nuit hors événements au Stade de France.</b> Basilique à visiter en journée.' } },
 ];
 
 const curfewZones = [
-  { n: '夜間外出禁止 22時〜6時', ll: [48.8676, 2.3631], r: 750 },
-  { n: '集会禁止 20時〜6時', ll: [48.8619, 2.3469], r: 650 },
+  { key: 'curfew1', ll: [48.8676, 2.3631], r: 750 },
+  { key: 'curfew2', ll: [48.8619, 2.3469], r: 650 },
 ];
 
 function addZones(zones, style) {
   zones.forEach(z => {
     L.circle(z.ll, { radius: z.r, ...style }).addTo(map)
-      .bindPopup('<b>' + z.n + '</b><br>' + z.p)
-      .bindTooltip(z.n, { permanent: true, direction: z.dir || 'top', className: 'zone-label', offset: [0, -4] });
+      .bindPopup('<b>' + z.n[LANG] + '</b><br>' + z.p[LANG])
+      .bindTooltip(z.n[LANG], { permanent: true, direction: z.dir || 'top', className: 'zone-label', offset: [0, -4] });
   });
 }
 addZones(redZones, RED);
 addZones(orangeZones, ORG);
 curfewZones.forEach(z => {
-  L.circle(z.ll, { radius: z.r, ...CURFEW }).addTo(map)
-    .bindPopup('<b>🌙 ' + z.n + '</b>（2026/10/19〜 当局発表）');
+  L.circle(z.ll, { radius: z.r, ...CURFEW }).addTo(map).bindPopup('<b>' + S[z.key] + '</b>');
 });
 
+const parisTime = (iso) => new Date(iso).toLocaleString(LANG === 'ja' ? 'ja-JP' : LANG === 'fr' ? 'fr-FR' : 'en-GB',
+  { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 // ニュース自動検出ゾーン（paris-watchが報道中の地名からhotspots.jsonを自動生成・72hで失効）
-const NEWSZ = { color: '#c2185b', weight: 2, dashArray: '4 4', fillColor: '#c2185b', fillOpacity: 0.10 };
 fetch('hotspots.json?t=' + Date.now())
   .then(r => r.ok ? r.json() : null)
   .then(d => {
@@ -154,10 +297,11 @@ fetch('hotspots.json?t=' + Date.now())
     const now = Date.now();
     d.spots.forEach(s => {
       if (now - new Date(s.last).getTime() > 72 * 3600 * 1000) return;
-      const t = new Date(s.last).toLocaleString('ja-JP', { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const a = s.url ? '<br><a href="' + s.url + '" target="_blank" rel="noopener">' + (s.head || '関連記事') + '</a>' : '';
+      const label = LANG === 'ja' ? s.label : (s.label_fr || s.label);
+      const head = LANG === 'ja' ? s.head : (s.head_fr || s.head);
+      const a = s.url ? '<br><a href="' + s.url + '" target="_blank" rel="noopener">' + (head || '🔗') + '</a>' : '';
       L.circle(s.ll, { radius: s.r, ...NEWSZ }).addTo(map)
-        .bindPopup('<b>🗞 ' + s.label + '</b><br>直近72hの騒乱ニュースで言及（' + s.n + '回・最終 ' + t + ' 仏時間）' + a);
+        .bindPopup('<b>🗞 ' + label + '</b><br>' + S.hotspot(s.n, parisTime(s.last)) + a);
     });
   })
   .catch(() => {});
@@ -172,7 +316,7 @@ fetch('news.json?t=' + Date.now())
       const li = document.createElement('li');
       const a = document.createElement('a');
       a.href = it.url; a.target = '_blank'; a.rel = 'noopener';
-      a.textContent = it.ja;
+      a.textContent = LANG === 'ja' ? it.ja : (it.fr || it.ja);
       li.appendChild(a);
       if (it.ts) {
         const s = document.createElement('span');
@@ -182,10 +326,7 @@ fetch('news.json?t=' + Date.now())
       }
       ul.appendChild(li);
     });
-    const t = new Date(d.updated);
-    document.getElementById('newsupd').textContent = '更新 ' +
-      t.toLocaleString('ja-JP', { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) +
-      ' 仏時間・自動更新';
+    document.getElementById('newsupd').textContent = S.newsupd(parisTime(d.updated));
     document.getElementById('newsbox').style.display = 'block';
   })
   .catch(() => {});
