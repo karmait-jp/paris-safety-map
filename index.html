@@ -29,6 +29,7 @@
   .dot.orange { background: rgba(245,124,0,0.5); border: 2px solid #f57c00; }
   .dot.purple { background: none; border: 2px dashed #7b1fa2; }
   .dot.news { background: rgba(194,24,91,0.25); border: 2px dashed #c2185b; }
+  .dot.route { background: #5e35b1; border: 2px solid #5e35b1; }
   .zone-label { background: none; border: none; box-shadow: none; font-weight: 700; font-size: 11px; color: #333; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
   .leaflet-popup-content { font-size: 12.5px; line-height: 1.5; }
   .leaflet-popup-content b.rd { color: #c62828; }
@@ -56,6 +57,10 @@
     <ul id="t_rules"></ul>
   </details>
   <div class="legend" id="t_legend"></div>
+  <div class="legend" id="demobox" style="display:none">
+    <div style="font-weight:700">📣 <span id="t_demohead"></span></div>
+    <ul id="demolist" style="margin:4px 0;padding-left:16px;font-size:11.5px"></ul>
+  </div>
   <div class="legend" id="newsbox" style="display:none">
     <div style="font-weight:700">📡 <span id="t_newshead"></span> <span id="newsupd" style="font-weight:400;color:#888;font-size:10px"></span></div>
     <ul id="newslist" style="margin:4px 0;padding-left:16px;max-height:160px;overflow-y:auto;font-size:11.5px"></ul>
@@ -94,7 +99,10 @@ ja: {
     ['orange', '<b>橙：常時注意エリア</b>（スリ・薬物等、特に夜間）'],
     ['purple', '<b>紫破線：夜間外出禁止・集会禁止ゾーン</b>'],
     ['news', '<b>桃破線：ニュース自動検出ゾーン</b>（直近72hの報道が言及・自動更新）'],
+    ['route', '<b>紫実線：デモの確定・予定ルート</b>（日時付き）'],
   ],
+  demohead: 'デモ予定・ルート',
+  routestart: '出発', routeend: '解散',
   newshead: '最新ニュース',
   newsupd: (t) => '更新 ' + t + ' 仏時間・自動更新',
   hotspot: (n, t) => '直近72hの騒乱ニュースで言及（' + n + '回・最終 ' + t + ' 仏時間）',
@@ -119,7 +127,10 @@ en: {
     ['orange', '<b>Orange: caution at all times</b> (pickpockets, drugs — esp. after dark)'],
     ['purple', '<b>Purple dashed: curfew / gathering-ban zones</b>'],
     ['news', '<b>Pink dashed: auto-detected news zones</b> (mentioned in the last 72h, auto-updated)'],
+    ['route', '<b>Purple line: confirmed/planned march routes</b> (with date & time)'],
   ],
+  demohead: 'Scheduled protests & routes',
+  routestart: 'Start', routeend: 'End',
   newshead: 'Latest news',
   newsupd: (t) => 'Updated ' + t + ' Paris time · auto',
   hotspot: (n, t) => 'Mentioned in unrest news in the last 72h (' + n + '×, last ' + t + ' Paris time)',
@@ -144,7 +155,10 @@ fr: {
     ['orange', '<b>Orange : vigilance permanente</b> (pickpockets, deal — surtout la nuit)'],
     ['purple', '<b>Pointillés violets : couvre-feu / rassemblements interdits</b>'],
     ['news', '<b>Pointillés roses : zones détectées par l’actu</b> (citées ces 72 dernières h, auto)'],
+    ['route', '<b>Trait violet : parcours de manif confirmés/annoncés</b> (avec date et horaire)'],
   ],
+  demohead: 'Manifs annoncées & parcours',
+  routestart: 'Départ', routeend: 'Dispersion',
   newshead: 'Dernières actus',
   newsupd: (t) => 'Màj ' + t + ' heure de Paris · auto',
   hotspot: (n, t) => 'Cité dans l’actualité des troubles ces 72 dernières heures (' + n + '×, dernier ' + t + ')',
@@ -163,6 +177,7 @@ document.getElementById('t_summary').textContent = S.summary;
 document.getElementById('t_rules').innerHTML = S.rules.map(r => '<li>' + r + '</li>').join('');
 document.getElementById('t_legend').innerHTML = S.legend.map(l => '<div><span class="dot ' + l[0] + '"></span>' + l[1] + '</div>').join('');
 document.getElementById('t_newshead').textContent = S.newshead;
+document.getElementById('t_demohead').textContent = S.demohead;
 document.getElementById('t_src').textContent = S.src;
 document.getElementById('langsw').innerHTML = ['ja', 'en', 'fr'].map(l =>
   '<a href="?lang=' + l + '" class="' + (l === LANG ? 'cur' : '') + '">' + { ja: '日本語', en: 'English', fr: 'Français' }[l] + '</a>').join('');
@@ -288,6 +303,37 @@ curfewZones.forEach(z => {
 
 const parisTime = (iso) => new Date(iso).toLocaleString(LANG === 'ja' ? 'ja-JP' : LANG === 'fr' ? 'fr-FR' : 'en-GB',
   { timeZone: 'Europe/Paris', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// デモの確定・予定ルート（routes.json: 手動キュレーション。過去日になると自動非表示）
+const ROUTE_STYLE = { color: '#5e35b1', weight: 5, opacity: 0.85 };
+fetch('routes.json?t=' + Date.now())
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d || !d.routes) return;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const act = d.routes.filter(rt => new Date(rt.date + 'T23:59:59') >= today);
+    if (!act.length) return;
+    const ul = document.getElementById('demolist');
+    act.forEach(rt => {
+      const li = document.createElement('li');
+      li.innerHTML = '<b>' + rt.d[LANG] + ' ' + rt.t[LANG] + '</b> — ' + rt.label[LANG] +
+        (rt.note ? '<br><span style="color:#666">' + rt.note[LANG] + '</span>' : '') +
+        (rt.url ? ' <a href="' + rt.url + '" target="_blank" rel="noopener">🔗</a>' : '');
+      ul.appendChild(li);
+      if (rt.points && rt.points.length > 1) {
+        const pop = '<b>📣 ' + rt.d[LANG] + ' ' + rt.t[LANG] + '</b><br>' + rt.label[LANG] +
+          (rt.note ? '<br><span style="font-size:11px;color:#555">' + rt.note[LANG] + '</span>' : '');
+        L.polyline(rt.points, ROUTE_STYLE).addTo(map).bindPopup(pop);
+        const mk = (pt, txt) => L.circleMarker(pt, { radius: 6, color: '#5e35b1', fillColor: '#fff', fillOpacity: 1, weight: 3 })
+          .addTo(map).bindPopup(pop)
+          .bindTooltip(txt, { permanent: true, direction: 'right', className: 'zone-label', offset: [8, 0] });
+        mk(rt.points[0], S.routestart + ' ' + rt.d[LANG]);
+        mk(rt.points[rt.points.length - 1], S.routeend);
+      }
+    });
+    document.getElementById('demobox').style.display = 'block';
+  })
+  .catch(() => {});
 
 // ニュース自動検出ゾーン（paris-watchが報道中の地名からhotspots.jsonを自動生成・72hで失効）
 fetch('hotspots.json?t=' + Date.now())

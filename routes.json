@@ -1,0 +1,48 @@
+{
+  "updated": "2026-10-31T08:00:00Z",
+  "routes": [
+    {
+      "date": "2026-10-31",
+      "d": { "ja": "10/31(土)", "en": "Sat Oct 31", "fr": "sam. 31 oct." },
+      "t": { "ja": "集合12時〜18時・出発14時", "en": "12pm–6pm, departs 2pm", "fr": "12h–18h, départ 14h" },
+      "label": {
+        "ja": "ジレ・ジョーヌ＋労組合同デモ【確定ルート】マレショー大通り東側(ポルト・ド・バニョレ→ポルト・ド・シャラントン)",
+        "en": "Yellow vests + unions march (final route): eastern Boulevards des Maréchaux, Porte de Bagnolet → Porte de Charenton",
+        "fr": "Cortège gilets jaunes + syndicats (parcours définitif) : boulevards des Maréchaux est, Porte de Bagnolet → Porte de Charenton"
+      },
+      "note": {
+        "ja": "当初のバスティーユ〜ナシオンはコンセイユ・デタが前夜に取消し→外周へ変更。中心部(シャンゼリゼ〜バスティーユ・左岸)で約40駅閉鎖、トラムT3a/T3bは11時から一部運休。金曜20時〜月曜6時は要注意エリアで無許可集会禁止",
+        "en": "The Bastille–Nation route was cancelled overnight by the Council of State → moved to the outer ring. ~40 metro stations closed in the centre (Champs-Élysées–Bastille, Left Bank); trams T3a/T3b partly suspended from 11am. Undeclared gatherings banned Fri 8pm–Mon 6am in sensitive areas",
+        "fr": "Le parcours Bastille–Nation a été annulé dans la nuit par le Conseil d'État → reporté sur les Maréchaux. ~40 stations fermées dans le centre (Champs-Élysées–Bastille, rive gauche) ; trams T3a/T3b partiellement interrompus dès 11h. Rassemblements non déclarés interdits du ven. 20h au lun. 6h dans les secteurs sensibles"
+      },
+      "status": "confirmed",
+      "points": [
+        [48.8646, 2.4086],
+        [48.8534, 2.4113],
+        [48.8470, 2.4106],
+        [48.8430, 2.4094],
+        [48.8352, 2.4062],
+        [48.8305, 2.3953]
+      ],
+      "url": "https://www.sortiraparis.com/en/news/in-paris/articles/356351-october-31-protest-bastille-nation-route-canceled-by-the-council-of-state"
+    },
+    {
+      "date": "2026-11-05",
+      "d": { "ja": "11/5(木)", "en": "Thu Nov 5", "fr": "jeu. 5 nov." },
+      "t": { "ja": "終日スト・パリのルート未発表", "en": "all-day strike, Paris route TBA", "fr": "grève toute la journée, parcours à confirmer" },
+      "label": {
+        "ja": "5大労組(CFDT/CGT/FO/UNSA/FSU)＋SNCF4労組の全国スト・デモ。メトロ・SNCF・学校に影響",
+        "en": "Nationwide strike by 5 major unions + 4 SNCF unions. Metro, SNCF and schools affected",
+        "fr": "Grève nationale des 5 grandes confédérations + 4 syndicats SNCF. Métro, SNCF et écoles touchés"
+      },
+      "note": {
+        "ja": "ルートが発表され次第ここに表示されます",
+        "en": "The route will appear here once announced",
+        "fr": "Le parcours s'affichera ici dès son annonce"
+      },
+      "status": "expected",
+      "points": [],
+      "url": "https://www.sortiraparis.com/en/news/in-paris/articles/354559-protest-and-strike-on-november-5-2026-transport-schools-and-routes-what-to-expect"
+    }
+  ]
+}
